@@ -1,0 +1,76 @@
+#!/usr/sbin/nft -f
+
+# Flush existing rules
+flush ruleset
+
+{%- macro build_nft_rule(rule) %}
+{%- set rule_parts = [] -%}
+{# Interface conditions #}
+{%- if rule.in_interface is defined -%}
+{%- set _ = rule_parts.append('iifname "' + rule.in_interface + '"') -%}
+{%- endif -%}
+{%- if rule.out_interface is defined -%}
+{%- set _ = rule_parts.append('oifname "' + rule.out_interface + '"') -%}
+{%- endif -%}
+{# IP address conditions #}
+{%- if rule.source is defined -%}
+{%- set _ = rule_parts.append('ip saddr ' + rule.source) -%}
+{%- endif -%}
+{%- if rule.destination is defined -%}
+{%- set _ = rule_parts.append('ip daddr ' + rule.destination) -%}
+{%- endif -%}
+{# Protocol conditions #}
+{%- if rule.protocol is defined -%}
+{%- if rule.protocol == 'vrrp' -%}
+{%- set _ = rule_parts.append('ip protocol 112') -%}
+{%- elif rule.protocol == 'icmp' -%}
+{%- set _ = rule_parts.append('ip protocol icmp') -%}
+{%- elif rule.destination_port is defined -%}
+{%- set _ = rule_parts.append(rule.protocol + ' dport ' + rule.destination_port|string) -%}
+{%- elif rule.source_port is defined -%}
+{%- set _ = rule_parts.append(rule.protocol + ' sport ' + rule.source_port|string) -%}
+{%- else -%}
+{%- set _ = rule_parts.append('ip protocol ' + rule.protocol) -%}
+{%- endif -%}
+{%- endif -%}
+{# Connection tracking #}
+{%- if rule.ctstate is defined -%}
+{%- set _ = rule_parts.append('ct state ' + rule.ctstate.replace(',', ', ').lower()) -%}
+{%- endif -%}
+{# Build final rule #}
+{% if rule.jump == 'DROP' %}
+        drop
+{% else %}
+        {{ rule_parts | join(' ') }}{% if rule.comment is defined %} comment "{{ rule.comment }}"{% endif %}; {{ rule.jump.lower() }}
+{% endif %}
+{%- endmacro %}
+
+# Define the main table
+table inet {{ nftables_table_name }} {
+    chain input {
+        type filter hook input priority 0; policy accept;
+{% for rule in iptables_rules %}
+{% if rule.chain == 'INPUT' %}
+{{ build_nft_rule(rule) }}
+{% endif %}
+{% endfor %}
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy accept;
+{% for rule in iptables_rules %}
+{% if rule.chain == 'FORWARD' %}
+{{ build_nft_rule(rule) }}
+{% endif %}
+{% endfor %}
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+{% for rule in iptables_rules %}
+{% if rule.chain == 'OUTPUT' %}
+{{ build_nft_rule(rule) }}
+{% endif %}
+{% endfor %}
+    }
+} 

@@ -1,7 +1,9 @@
 ---
-# Main entry point for role-iptables-ha tasks
 - import_tasks: pre_tasks.yml
 - import_tasks: install.yml
 - import_tasks: firewall.yml
+  when: firewall_backend == 'iptables'
+- import_tasks: nftables_firewall.yml
+  when: firewall_backend == 'nftables'
 - import_tasks: config.yml
 - import_tasks: audit.yml

@@ -11,6 +11,7 @@
   {%- if rule.source is defined %} -s {{ rule.source }}{% endif %}
   {%- if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
   {%- if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+  {%- if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
   {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
   {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
   -j {{ rule.jump }}
@@ -21,6 +22,7 @@
   {%- if rule.source is defined %} -s {{ rule.source }}{% endif %}
   {%- if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
   {%- if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+  {%- if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
   {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
   {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
   -j {{ rule.jump }}
@@ -32,6 +34,7 @@
   {%- if rule.source is defined %} -s {{ rule.source }}{% endif %}
   {%- if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
   {%- if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+  {%- if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
   {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
   {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
   -j {{ rule.jump }}

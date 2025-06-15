@@ -1,6 +1,4 @@
 ---
-# Pre-tasks: VRRP rule generation and rule combination
-
 - name: Initialize VRRP rules lists
   set_fact:
     vrrp_input_rules: []
@@ -44,10 +42,11 @@
 - name: Combine all iptables rules
   set_fact:
     iptables_rules: >-
-      {{ (input_rules[0:2] | map('combine', {'chain': 'INPUT'}) | list)
+      {{ (input_rules[:2] | map('combine', {'chain': 'INPUT'}) | list)
          + vrrp_input_rules
-         + (input_rules[2:] | map('combine', {'chain': 'INPUT'}) | list)
-         + (output_rules[0:1] | map('combine', {'chain': 'OUTPUT'}) | list)
+         + (input_rules[2:-1] | map('combine', {'chain': 'INPUT'}) | list)
+         + ([input_rules[-1]] | map('combine', {'chain': 'INPUT'}) | list)
+         + (output_rules[:1] | map('combine', {'chain': 'OUTPUT'}) | list)
          + vrrp_output_rules
          + (output_rules[1:] | map('combine', {'chain': 'OUTPUT'}) | list)
          + (forward_rules | map('combine', {'chain': 'FORWARD'}) | list) }} 

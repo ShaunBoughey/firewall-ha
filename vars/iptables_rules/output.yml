@@ -6,6 +6,12 @@ output_rules:
     jump: ACCEPT
     comment: "Allow established and related outbound connections"
 
+  # SSH server responses
+  - protocol: tcp
+    source_port: 22
+    jump: ACCEPT
+    comment: "Allow SSH server responses"
+
   # Web services
   - protocol: tcp
     destination_port: 80
@@ -30,4 +36,8 @@ output_rules:
   - protocol: udp
     destination_port: 123
     jump: ACCEPT
-    comment: "Allow outbound NTP" 
+    comment: "Allow outbound NTP"
+
+  # Always drop all other traffic (default deny)
+  - jump: DROP
+    comment: "Default deny all other outbound traffic" 

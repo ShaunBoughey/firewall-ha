@@ -1,5 +1,15 @@
-# Log execution of /sbin/iptables with command line for users with auid>=1000
--a always,exit -F path=/sbin/iptables -F perm=x -F auid>=1000 -F auid!=4294967295 -k iptables_cmd
+# Log execution of firewall commands with command line for users with auid>=1000
+{% if firewall_backend == 'iptables' %}
+-a always,exit -F path=/sbin/iptables -F perm=x -F auid>=1000 -F auid!=4294967295 -k firewall_cmd
+-a always,exit -F path=/sbin/iptables-restore -F perm=x -F auid>=1000 -F auid!=4294967295 -k firewall_cmd
 
-# Optionally, monitor direct edits to iptables rules files
--w /etc/iptables/ -p wa -k iptables_changes 
+# Monitor direct edits to iptables rules files
+-w /etc/iptables/ -p wa -k firewall_changes
+{% elif firewall_backend == 'nftables' %}
+# nftables command execution auditing (all users including root)
+-a always,exit -F path=/sbin/nft -F perm=x -k firewall_cmd
+-a always,exit -F path=/usr/sbin/nft -F perm=x -k firewall_cmd
+
+# Monitor direct edits to nftables configuration files
+-w /etc/nftables.conf -p wa -k firewall_changes
+{% endif %} 

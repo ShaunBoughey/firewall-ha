@@ -1,11 +1,24 @@
 ---
-# Install required packages
-
-- name: Install required packages
+- name: Install iptables packages
   apt:
     name:
       - iptables
       - iptables-persistent
+    state: present
+    update_cache: yes
+  when: firewall_backend == 'iptables'
+
+- name: Install nftables packages
+  apt:
+    name:
+      - nftables
+    state: present
+    update_cache: yes
+  when: firewall_backend == 'nftables'
+
+- name: Install common packages
+  apt:
+    name:
       - keepalived
       - auditd
     state: present

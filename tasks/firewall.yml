@@ -1,6 +1,4 @@
 ---
-# Apply iptables rules atomically (after packages are installed)
-
 - name: Create iptables directory for backups
   file:
     path: /etc/iptables

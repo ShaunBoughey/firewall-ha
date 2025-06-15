@@ -1,6 +1,6 @@
-# Ansible Role: iptables-ha
+# Ansible Role: firewall-ha
 
-This Ansible role sets up iptables management with High Availability using Keepalived on Debian 12 systems. It includes simple, effective auditing of iptables command changes.
+This Ansible role sets up firewall management with High Availability using Keepalived on Debian 12 systems. It supports both **iptables** and **nftables** backends and includes simple, effective auditing of firewall command changes.
 
 ## Requirements
 
@@ -13,6 +13,9 @@ This Ansible role sets up iptables management with High Availability using Keepa
 All variables can be overridden in your inventory or playbook:
 
 ```yaml
+# Firewall backend selection
+firewall_backend: iptables  # Options: iptables, nftables
+
 # Keepalived configuration
 keepalived_state: MASTER  # or BACKUP
 keepalived_priority: 100  # Higher for MASTER, lower for BACKUP
@@ -20,11 +23,18 @@ keepalived_vrrp_interface: ens18
 keepalived_virtual_router_id: 51
 keepalived_vip: 192.168.0.203
 keepalived_auth_pass: "your_secure_password"
+
+# Iptables configuration (when firewall_backend: iptables)
+iptables_default_policy: DROP
+
+# Nftables configuration (when firewall_backend: nftables)
+nftables_table_name: filter
+nftables_default_policy: drop
 ```
 
 ### Firewall Rule Structure
 
-Firewall rules are now split by chain for clarity and maintainability. Each rule can include a `comment` field for documentation. You can also specify `source`, `destination`, `in_interface`, and `out_interface` for granular control.
+Firewall rules are split by chain for clarity and maintainability. Each rule can include a `comment` field for documentation. You can also specify `source`, `destination`, `in_interface`, and `out_interface` for granular control.
 
 #### Example: vars/iptables_rules/input.yml
 ```yaml
@@ -111,18 +121,36 @@ keepalived_virtual_router_id=51
     - role: role-iptables-ha
 ```
 
+## Firewall Backend Selection
+
+This role supports both iptables and nftables backends. Set the `firewall_backend` variable to choose:
+
+### Using iptables (default)
+```yaml
+firewall_backend: iptables
+```
+
+### Using nftables
+```yaml
+firewall_backend: nftables
+```
+
+The rule format remains the same regardless of backend - the role automatically translates the rules to the appropriate syntax.
+
 ## Features
-- **Atomic rule application:** All rules are applied at once using `iptables-restore` for safety and consistency.
-- **Idempotent:** Rules are always applied in a consistent order; default deny is enforced by a final DROP rule.
-- **Per-rule comments:** Each rule can be documented for clarity and auditing.
-- **Supports `source`, `destination`, `in_interface`, and `out_interface` fields for granular control.**
-- **Auditing:** All iptables changes are logged using `auditd`.
-- **Supports INPUT, OUTPUT, and FORWARD chains.**
+- **Dual backend support:** Choose between iptables and nftables
+- **Atomic rule application:** All rules are applied at once using `iptables-restore` or `nft -f` for safety and consistency
+- **Idempotent:** Rules are always applied in a consistent order; default deny is enforced by a final DROP rule
+- **Per-rule comments:** Each rule can be documented for clarity and auditing
+- **Supports `source`, `destination`, `in_interface`, and `out_interface` fields for granular control**
+- **Auditing:** All firewall changes are logged using `auditd`
+- **Supports INPUT, OUTPUT, and FORWARD chains**
 
 ## Auditing
 
-The role includes simple auditing of iptables command changes using `auditd`.
+The role includes simple auditing of firewall command changes using `auditd`.
 
+### For iptables backend:
 - **To see who ran which iptables command:**
   ```bash
   ausearch -k iptables_cmd | grep proctitle
@@ -134,4 +162,14 @@ The role includes simple auditing of iptables command changes using `auditd`.
 - **To see direct edits to iptables rules files:**
   ```bash
   ausearch -k iptables_changes
+  ```
+
+### For nftables backend:
+- **To see who ran which nft command:**
+  ```bash
+  ausearch -x nft
+  ```
+- **To see direct edits to nftables configuration:**
+  ```bash
+  ausearch -k firewall_changes | grep nftables
   ```

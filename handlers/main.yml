@@ -9,4 +9,14 @@
 - name: restart auditd
   systemd:
     name: auditd
-    state: restarted 
+    state: restarted
+
+- name: restart nftables
+  systemd:
+    name: nftables
+    state: restarted
+
+- name: reload nftables
+  systemd:
+    name: nftables
+    state: reloaded 

@@ -1,6 +1,9 @@
 ---
 # Default variables for iptables-ha role
 
+# Firewall backend selection
+firewall_backend: iptables  # Options: iptables, nftables
+
 # Keepalived configuration
 keepalived_state: MASTER  # or BACKUP
 keepalived_priority: 100  # Higher for MASTER, lower for BACKUP
@@ -11,6 +14,9 @@ keepalived_auth_pass: "your_secure_password"  # Change in production
 
 # Iptables configuration
 iptables_default_policy: DROP
+
+# Nftables configuration
+nftables_table_name: filter
 
 # Service management
 iptables_persistent: true

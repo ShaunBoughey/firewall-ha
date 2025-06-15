@@ -1,6 +1,4 @@
 ---
-# Configure keepalived and auditd
-
 - name: Create keepalived configuration directory
   file:
     path: /etc/keepalived

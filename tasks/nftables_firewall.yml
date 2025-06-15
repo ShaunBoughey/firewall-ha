@@ -1,0 +1,27 @@
+---
+- name: Generate nftables rules file
+  template:
+    src: nftables.rules.j2
+    dest: /etc/nftables.conf
+    mode: '0644'
+    backup: yes
+  register: nftables_template_result
+  notify: reload nftables
+
+- name: Validate nftables configuration syntax
+  command: nft -c -f /etc/nftables.conf
+  register: nftables_validation_result
+  failed_when: nftables_validation_result.rc != 0
+  changed_when: false
+
+- name: Apply nftables configuration (flush and reload)
+  command: nft -f /etc/nftables.conf
+  register: nftables_apply_result
+  when: nftables_template_result.changed
+  changed_when: nftables_template_result.changed
+
+- name: Enable and start nftables service
+  systemd:
+    name: nftables
+    enabled: yes
+    state: started 
