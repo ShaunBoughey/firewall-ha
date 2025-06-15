@@ -1,0 +1,5 @@
+# Log execution of /sbin/iptables with command line for users with auid>=1000
+-a always,exit -F path=/sbin/iptables -F perm=x -F auid>=1000 -F auid!=4294967295 -k iptables_cmd
+
+# Optionally, monitor direct edits to iptables rules files
+-w /etc/iptables/ -p wa -k iptables_changes 

@@ -1,0 +1,7 @@
+---
+# Main entry point for role-iptables-ha tasks
+- import_tasks: pre_tasks.yml
+- import_tasks: install.yml
+- import_tasks: firewall.yml
+- import_tasks: config.yml
+- import_tasks: audit.yml

@@ -1,0 +1,10 @@
+---
+# FORWARD chain rules
+forward_rules:
+  - ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    comment: "Allow established and related forwarded connections"
+
+  # Always drop all other traffic (default deny)
+  - jump: DROP
+    comment: "Default deny all other forwarded traffic" 

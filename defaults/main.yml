@@ -1,0 +1,22 @@
+---
+# Default variables for iptables-ha role
+
+# Keepalived configuration
+keepalived_state: MASTER  # or BACKUP
+keepalived_priority: 100  # Higher for MASTER, lower for BACKUP
+keepalived_vrrp_interface: ens18
+keepalived_virtual_router_id: 51
+keepalived_vip: 192.168.0.203
+keepalived_auth_pass: "your_secure_password"  # Change in production
+
+# Iptables configuration
+iptables_default_policy: DROP
+
+# Service management
+iptables_persistent: true
+keepalived_enabled: true
+
+# Note: Firewall rules are now defined in vars/iptables_rules/ directory
+# - vars/iptables_rules/input.yml
+# - vars/iptables_rules/output.yml  
+# - vars/iptables_rules/forward.yml 

@@ -1,0 +1,43 @@
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+
+{% for rule in iptables_rules %}
+{% if rule.chain == 'INPUT' %}
+-A INPUT
+  {%- if rule.in_interface is defined %} -i {{ rule.in_interface }}{% endif %}
+  {%- if rule.protocol is defined %} -p {{ rule.protocol }}{% endif %}
+  {%- if rule.source is defined %} -s {{ rule.source }}{% endif %}
+  {%- if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+  {%- if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+  {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
+  {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+  -j {{ rule.jump }}
+{% elif rule.chain == 'OUTPUT' %}
+-A OUTPUT
+  {%- if rule.out_interface is defined %} -o {{ rule.out_interface }}{% endif %}
+  {%- if rule.protocol is defined %} -p {{ rule.protocol }}{% endif %}
+  {%- if rule.source is defined %} -s {{ rule.source }}{% endif %}
+  {%- if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+  {%- if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+  {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
+  {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+  -j {{ rule.jump }}
+{% elif rule.chain == 'FORWARD' %}
+-A FORWARD
+  {%- if rule.in_interface is defined %} -i {{ rule.in_interface }}{% endif %}
+  {%- if rule.out_interface is defined %} -o {{ rule.out_interface }}{% endif %}
+  {%- if rule.protocol is defined %} -p {{ rule.protocol }}{% endif %}
+  {%- if rule.source is defined %} -s {{ rule.source }}{% endif %}
+  {%- if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+  {%- if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+  {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
+  {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+  -j {{ rule.jump }}
+{% endif %}
+{% endfor %}
+
+COMMIT
+
+# End of rules

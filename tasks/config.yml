@@ -1,0 +1,21 @@
+---
+# Configure keepalived and auditd
+
+- name: Create keepalived configuration directory
+  file:
+    path: /etc/keepalived
+    state: directory
+    mode: '0755'
+
+- name: Configure keepalived
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    mode: '0644'
+  notify: restart keepalived
+
+- name: Enable and start keepalived service
+  systemd:
+    name: keepalived
+    state: started
+    enabled: "{{ keepalived_enabled }}" 

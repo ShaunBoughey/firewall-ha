@@ -1,0 +1,12 @@
+---
+# Handlers for iptables-ha role
+
+- name: restart keepalived
+  systemd:
+    name: keepalived
+    state: restarted
+
+- name: restart auditd
+  systemd:
+    name: auditd
+    state: restarted 

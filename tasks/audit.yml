@@ -1,0 +1,30 @@
+---
+# Configure auditd
+
+- name: Configure auditd rules for iptables
+  template:
+    src: audit.rules.j2
+    dest: /etc/audit/rules.d/iptables.rules
+    mode: '0640'
+  notify: restart auditd
+
+- name: Create audit log directory
+  file:
+    path: /var/log/audit/iptables
+    state: directory
+    mode: '0750'
+    owner: root
+    group: root
+
+- name: Configure auditd service
+  template:
+    src: auditd.conf.j2
+    dest: /etc/audit/auditd.conf
+    mode: '0640'
+  notify: restart auditd
+
+- name: Enable and start auditd service
+  systemd:
+    name: auditd
+    state: started
+    enabled: yes 

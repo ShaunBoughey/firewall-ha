@@ -1,0 +1,43 @@
+---
+# INPUT chain rules
+input_rules:
+  # Allow loopback traffic
+  - in_interface: lo
+    jump: ACCEPT
+    comment: "Allow all loopback (lo) traffic"
+
+  # Connection tracking
+  - ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+    comment: "Allow established and related connections"
+
+  # Allow SSH from specific source
+  - protocol: tcp
+    destination_port: 22
+    source: 192.168.0.254/24
+    jump: ACCEPT
+    comment: "Allow SSH from 192.168.0.254/24"
+
+  - protocol: icmp
+    jump: ACCEPT
+    comment: "Allow ICMP (ping)"
+
+  # Web services
+  - protocol: tcp
+    destination_port: 80
+    jump: ACCEPT
+    comment: "Allow HTTP"
+  - protocol: tcp
+    destination_port: 443
+    jump: ACCEPT
+    comment: "Allow HTTPS"
+
+  # Custom port
+  - protocol: tcp
+    destination_port: 8882
+    jump: ACCEPT
+    comment: "Allow custom app on 8882"
+
+  # Always drop all other traffic (default deny)
+  - jump: DROP
+    comment: "Default deny all other traffic" 

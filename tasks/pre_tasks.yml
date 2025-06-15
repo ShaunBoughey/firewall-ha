@@ -1,0 +1,53 @@
+---
+# Pre-tasks: VRRP rule generation and rule combination
+
+- name: Initialize VRRP rules lists
+  set_fact:
+    vrrp_input_rules: []
+    vrrp_output_rules: []
+
+- name: Create VRRP INPUT rules for each HA node (secure)
+  set_fact:
+    vrrp_input_rules: "{{ vrrp_input_rules + [vrrp_rule] }}"
+  vars:
+    vrrp_rule:
+      source: "{{ hostvars[item]['ansible_host'] }}"
+      destination: "224.0.0.18"
+      in_interface: "{{ keepalived_vrrp_interface }}"
+      protocol: "vrrp"
+      jump: "ACCEPT"
+      comment: "Allow VRRP multicast from {{ item }} on {{ keepalived_vrrp_interface }}"
+      chain: "INPUT"
+  loop: "{{ groups['firewall_nodes'] }}"
+  when: item != inventory_hostname
+
+- name: Create VRRP OUTPUT rule (multicast)
+  set_fact:
+    vrrp_output_rules: "{{ vrrp_output_rules + [multicast_rule] }}"
+  vars:
+    multicast_rule:
+      destination: "224.0.0.18"
+      out_interface: "{{ keepalived_vrrp_interface }}"
+      protocol: "vrrp"
+      jump: "ACCEPT"
+      comment: "Allow VRRP multicast advertisements on {{ keepalived_vrrp_interface }}"
+      chain: "OUTPUT"
+
+- name: Include iptables rule sets
+  include_vars:
+    file: "{{ item }}"
+  loop:
+    - "{{ role_path }}/vars/iptables_rules/input.yml"
+    - "{{ role_path }}/vars/iptables_rules/output.yml"
+    - "{{ role_path }}/vars/iptables_rules/forward.yml"
+
+- name: Combine all iptables rules
+  set_fact:
+    iptables_rules: >-
+      {{ (input_rules[0:2] | map('combine', {'chain': 'INPUT'}) | list)
+         + vrrp_input_rules
+         + (input_rules[2:] | map('combine', {'chain': 'INPUT'}) | list)
+         + (output_rules[0:1] | map('combine', {'chain': 'OUTPUT'}) | list)
+         + vrrp_output_rules
+         + (output_rules[1:] | map('combine', {'chain': 'OUTPUT'}) | list)
+         + (forward_rules | map('combine', {'chain': 'FORWARD'}) | list) }} 

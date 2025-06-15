@@ -1,0 +1,57 @@
+---
+# Apply iptables rules atomically (after packages are installed)
+
+- name: Create iptables directory for backups
+  file:
+    path: /etc/iptables
+    state: directory
+    mode: '0755'
+
+- name: Backup current iptables rules
+  shell: iptables-save > /etc/iptables/rules.v4.backup
+  register: backup_result
+  changed_when: false
+
+- name: Validate iptables rules before applying
+  block:
+    - name: Create temporary rules file for validation
+      template:
+        src: iptables.rules.j2
+        dest: /tmp/iptables.rules.tmp
+        mode: '0600'
+
+    - name: Validate iptables rules
+      shell: iptables-restore -t < /tmp/iptables.rules.tmp
+      register: validation_result
+      failed_when: validation_result.rc != 0
+
+    - name: Clean up temporary validation file
+      file:
+        path: /tmp/iptables.rules.tmp
+        state: absent
+  rescue:
+    - name: Restore backup rules on validation failure
+      shell: iptables-restore < /etc/iptables/rules.v4.backup
+      when: backup_result.rc == 0
+    - name: Fail with validation error
+      fail:
+        msg: "Iptables rules validation failed. Rules have been restored to previous state."
+
+- name: Create iptables rules file for atomic apply
+  template:
+    src: iptables.rules.j2
+    dest: /tmp/iptables.rules.apply
+    mode: '0600'
+
+- name: Apply all iptables rules atomically
+  shell: iptables-restore < /tmp/iptables.rules.apply
+  register: iptables_apply_result
+
+- name: Clean up temporary rules file
+  file:
+    path: /tmp/iptables.rules.apply
+    state: absent
+
+- name: Save iptables rules
+  shell: netfilter-persistent save
+  when: iptables_persistent and iptables_apply_result.rc == 0 

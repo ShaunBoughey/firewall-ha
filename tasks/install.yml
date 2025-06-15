@@ -1,0 +1,12 @@
+---
+# Install required packages
+
+- name: Install required packages
+  apt:
+    name:
+      - iptables
+      - iptables-persistent
+      - keepalived
+      - auditd
+    state: present
+    update_cache: yes 
