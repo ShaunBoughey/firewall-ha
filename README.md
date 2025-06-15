@@ -137,15 +137,6 @@ firewall_backend: nftables
 
 The rule format remains the same regardless of backend - the role automatically translates the rules to the appropriate syntax.
 
-## Features
-- **Dual backend support:** Choose between iptables and nftables
-- **Atomic rule application:** All rules are applied at once using `iptables-restore` or `nft -f` for safety and consistency
-- **Idempotent:** Rules are always applied in a consistent order; default deny is enforced by a final DROP rule
-- **Per-rule comments:** Each rule can be documented for clarity and auditing
-- **Supports `source`, `destination`, `in_interface`, and `out_interface` fields for granular control**
-- **Auditing:** All firewall changes are logged using `auditd`
-- **Supports INPUT, OUTPUT, and FORWARD chains**
-
 ## Auditing
 
 The role includes simple auditing of firewall command changes using `auditd`.
