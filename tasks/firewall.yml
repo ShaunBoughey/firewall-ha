@@ -52,4 +52,4 @@
 
 - name: Save iptables rules
   shell: netfilter-persistent save
-  when: iptables_persistent and iptables_apply_result.rc == 0 
+  when: iptables_apply_result.rc == 0 

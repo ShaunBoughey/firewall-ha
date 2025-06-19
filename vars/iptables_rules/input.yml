@@ -6,38 +6,43 @@ input_rules:
     jump: ACCEPT
     comment: "Allow all loopback (lo) traffic"
 
-  # Connection tracking
-  - ctstate: ESTABLISHED,RELATED
+  # Connection tracking - allow established and related
+  - ctstate: RELATED,ESTABLISHED
     jump: ACCEPT
     comment: "Allow established and related connections"
 
-  # Allow SSH from specific source
+  # Allow SSH connections
   - protocol: tcp
     destination_port: 22
-    source: 192.168.0.254/24
+    ctstate: NEW
     jump: ACCEPT
-    comment: "Allow SSH from 192.168.0.254/24"
+    comment: "Allow SSH connections"
 
-  - protocol: icmp
+  # VRRP unicast from peer (HA traffic)
+  - protocol: 112
+    source: "{{ external_peer }}"
     jump: ACCEPT
-    comment: "Allow ICMP (ping)"
+    comment: "Allow VRRP unicast from external peer"
 
-  # Web services
-  - protocol: tcp
-    destination_port: 80
+  - protocol: 112
+    source: "{{ internal_peer }}"
     jump: ACCEPT
-    comment: "Allow HTTP"
-  - protocol: tcp
-    destination_port: 443
-    jump: ACCEPT
-    comment: "Allow HTTPS"
+    comment: "Allow VRRP unicast from internal peer"
 
-  # Custom port
-  - protocol: tcp
-    destination_port: 8888
+  # Conntrackd sync traffic (HA traffic)
+  - protocol: udp
+    source: "{{ internal_peer }}"
+    destination_port: 3780
     jump: ACCEPT
-    comment: "Allow custom app on 8888"
+    comment: "Allow Conntrackd sync from internal peer"
 
-  # Always drop all other traffic (default deny)
+  # Log invalid packets before dropping
+  - ctstate: INVALID
+    jump: LOG
+    comment: "Log invalid packets"
+    log_prefix: "INPUT-INVALID: "
+    log_level: 4
+
+  # Drop all other traffic (default deny)
   - jump: DROP
-    comment: "Default deny all other traffic" 
+    comment: "Drop all other traffic" 

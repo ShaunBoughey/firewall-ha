@@ -1,20 +1,47 @@
-vrrp_script check_keepalived {
-    script "killall -0 keepalived"
-    interval 2
-    weight 2
+! ---------- external VIP on {{ ext_interface }} ----------
+vrrp_instance EXT_VIP {
+    interface       {{ ext_interface }}
+    virtual_router_id 51
+    state           {{ 'MASTER' if inventory_hostname == 'fw1' else 'BACKUP' }}
+    priority        {{ 101 if inventory_hostname == 'fw1' else 100 }}
+    advert_int      1
+{% if inventory_hostname == 'fw1' %}
+    preempt_delay 10
+{% endif %}
+
+    unicast_src_ip  {{ external_ip }}
+    unicast_peer    { {{ external_peer }} }
+
+    virtual_ipaddress {
+        {{ external_vip }}/24
+    }
+
+    notify_master "/usr/sbin/conntrackd -F"
+    notify_backup "/usr/sbin/conntrackd -n"
+    notify_fault  "/usr/sbin/conntrackd -F"
+
 }
 
-vrrp_instance VI_1 {
-    state {{ keepalived_state }}
-    interface {{ keepalived_vrrp_interface }}
-    virtual_router_id {{ keepalived_virtual_router_id }}
-    priority {{ keepalived_priority }}
-    advert_int 1
-    authentication {
-        auth_type PASS
-        auth_pass {{ keepalived_auth_pass }}
-    }
+! ---------- internal default-gw VIP on {{ int_interface }} ----------
+vrrp_instance INT_VIP {
+    interface       {{ int_interface }}
+    virtual_router_id 52
+    state           {{ 'MASTER' if inventory_hostname == 'fw1' else 'BACKUP' }}
+    priority        {{ 101 if inventory_hostname == 'fw1' else 100 }}
+    advert_int      1
+{% if inventory_hostname == 'fw1' %}
+    preempt_delay   10
+{% endif %}
+
+    unicast_src_ip  {{ internal_ip }}
+    unicast_peer    { {{ internal_peer }} }
+
     virtual_ipaddress {
-        {{ keepalived_vip }}/24
+        {{ internal_vip }}/24
     }
+
+    notify_master "/usr/sbin/conntrackd -F"
+    notify_backup "/usr/sbin/conntrackd -n"
+    notify_fault  "/usr/sbin/conntrackd -F"
+
 } 

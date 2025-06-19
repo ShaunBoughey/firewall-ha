@@ -1,0 +1,10 @@
+---
+# NAT POSTROUTING chain rules
+nat_postrouting_rules:
+  # SNAT rules for SSH forwarding from internal server
+  - protocol: tcp
+    source: "10.10.0.86"
+    source_port: 22
+    jump: SNAT
+    to_source: "{{ external_vip }}"
+    comment: "SSH forwarding from internal server" 

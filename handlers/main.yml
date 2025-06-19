@@ -6,6 +6,11 @@
     name: keepalived
     state: restarted
 
+- name: restart conntrackd
+  systemd:
+    name: conntrackd
+    state: restarted
+
 - name: restart auditd
   systemd:
     name: auditd

@@ -16,10 +16,11 @@
     update_cache: yes
   when: firewall_backend == 'nftables'
 
-- name: Install common packages
+- name: Install HA packages
   apt:
     name:
       - keepalived
+      - conntrackd
       - auditd
     state: present
     update_cache: yes 

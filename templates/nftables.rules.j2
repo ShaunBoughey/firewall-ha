@@ -14,41 +14,49 @@ flush ruleset
 {%- endif -%}
 {# IP address conditions #}
 {%- if rule.source is defined -%}
-{%- set _ = rule_parts.append('ip saddr ' + rule.source) -%}
+{%- set _ = rule_parts.append('ip saddr ' + rule.source|string) -%}
 {%- endif -%}
 {%- if rule.destination is defined -%}
-{%- set _ = rule_parts.append('ip daddr ' + rule.destination) -%}
+{%- set _ = rule_parts.append('ip daddr ' + rule.destination|string) -%}
 {%- endif -%}
 {# Protocol conditions #}
 {%- if rule.protocol is defined -%}
-{%- if rule.protocol == 'vrrp' -%}
+{%- if rule.protocol == '112' or rule.protocol == 112 -%}
 {%- set _ = rule_parts.append('ip protocol 112') -%}
 {%- elif rule.protocol == 'icmp' -%}
 {%- set _ = rule_parts.append('ip protocol icmp') -%}
 {%- elif rule.destination_port is defined -%}
-{%- set _ = rule_parts.append(rule.protocol + ' dport ' + rule.destination_port|string) -%}
+{%- set _ = rule_parts.append(rule.protocol|string + ' dport ' + rule.destination_port|string) -%}
 {%- elif rule.source_port is defined -%}
-{%- set _ = rule_parts.append(rule.protocol + ' sport ' + rule.source_port|string) -%}
+{%- set _ = rule_parts.append(rule.protocol|string + ' sport ' + rule.source_port|string) -%}
 {%- else -%}
-{%- set _ = rule_parts.append('ip protocol ' + rule.protocol) -%}
+{%- set _ = rule_parts.append('ip protocol ' + rule.protocol|string) -%}
 {%- endif -%}
 {%- endif -%}
 {# Connection tracking #}
 {%- if rule.ctstate is defined -%}
 {%- set _ = rule_parts.append('ct state ' + rule.ctstate.replace(',', ', ').lower()) -%}
 {%- endif -%}
-{# Build final rule #}
+{# Build final rule based on action #}
 {% if rule.jump == 'DROP' %}
-        drop
+        {{ rule_parts | join(' ') }} drop{% if rule.comment is defined %} comment "{{ rule.comment }}"{% endif %};
+{% elif rule.jump == 'ACCEPT' %}
+        {{ rule_parts | join(' ') }} accept{% if rule.comment is defined %} comment "{{ rule.comment }}"{% endif %};
+{% elif rule.jump == 'LOG' %}
+        {{ rule_parts | join(' ') }} log{% if rule.log_prefix is defined %} prefix "{{ rule.log_prefix }}"{% endif %}{% if rule.comment is defined %} comment "{{ rule.comment }}"{% endif %};
+{% elif rule.jump == 'DNAT' %}
+        {{ rule_parts | join(' ') }} dnat to {{ rule.to_destination }}{% if rule.comment is defined %} comment "{{ rule.comment }}"{% endif %};
+{% elif rule.jump == 'SNAT' %}
+        {{ rule_parts | join(' ') }} snat to {{ rule.to_source }}{% if rule.comment is defined %} comment "{{ rule.comment }}"{% endif %};
 {% else %}
-        {{ rule_parts | join(' ') }}{% if rule.comment is defined %} comment "{{ rule.comment }}"{% endif %}; {{ rule.jump.lower() }}
+        {{ rule_parts | join(' ') }} {{ rule.jump.lower() }}{% if rule.comment is defined %} comment "{{ rule.comment }}"{% endif %};
 {% endif %}
 {%- endmacro %}
 
 # Define the main table
-table inet {{ nftables_table_name }} {
+table inet filter {
     chain input {
-        type filter hook input priority 0; policy accept;
+        type filter hook input priority 0; policy drop;
 {% for rule in iptables_rules %}
 {% if rule.chain == 'INPUT' %}
 {{ build_nft_rule(rule) }}
@@ -69,6 +77,27 @@ table inet {{ nftables_table_name }} {
         type filter hook output priority 0; policy accept;
 {% for rule in iptables_rules %}
 {% if rule.chain == 'OUTPUT' %}
+{{ build_nft_rule(rule) }}
+{% endif %}
+{% endfor %}
+    }
+}
+
+# Define the NAT table
+table inet nat {
+    chain prerouting {
+        type nat hook prerouting priority -100; policy accept;
+{% for rule in iptables_rules %}
+{% if rule.chain == 'PREROUTING' %}
+{{ build_nft_rule(rule) }}
+{% endif %}
+{% endfor %}
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority 100; policy accept;
+{% for rule in iptables_rules %}
+{% if rule.chain == 'POSTROUTING' %}
 {{ build_nft_rule(rule) }}
 {% endif %}
 {% endfor %}

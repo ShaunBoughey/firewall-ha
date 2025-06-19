@@ -5,6 +5,14 @@ forward_rules:
     jump: ACCEPT
     comment: "Allow established and related forwarded connections"
 
+  # Allow SSH forwarding to internal server
+  - protocol: tcp
+    destination: "10.10.0.86"
+    destination_port: 22
+    ctstate: NEW
+    jump: ACCEPT
+    comment: "Allow SSH forwarding to internal server"
+
   # Always drop all other traffic (default deny)
   - jump: DROP
     comment: "Default deny all other forwarded traffic" 

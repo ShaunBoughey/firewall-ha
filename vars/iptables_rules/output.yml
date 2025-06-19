@@ -38,6 +38,24 @@ output_rules:
     jump: ACCEPT
     comment: "Allow outbound NTP"
 
+  # VRRP unicast to peer (HA traffic)
+  - protocol: 112
+    destination: "{{ external_peer }}"
+    jump: ACCEPT
+    comment: "Allow VRRP unicast to external peer"
+
+  - protocol: 112
+    destination: "{{ internal_peer }}"
+    jump: ACCEPT
+    comment: "Allow VRRP unicast to internal peer"
+
+  # Conntrackd sync traffic (HA traffic)
+  - protocol: udp
+    destination: "{{ internal_peer }}"
+    destination_port: 3780
+    jump: ACCEPT
+    comment: "Allow Conntrackd sync to internal peer"
+
   # Always drop all other traffic (default deny)
   - jump: DROP
     comment: "Default deny all other outbound traffic" 

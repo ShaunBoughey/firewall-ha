@@ -1,28 +1,25 @@
 ---
 # Default variables for iptables-ha role
 
+# IP Configuration - Set these per host in inventory
+# fw1 = MASTER (priority 101), fw2 = BACKUP (priority 100)
+external_ip: 192.168.0.117      # This node's external IP address
+external_peer: 192.168.0.243    # Peer node's external IP address
+external_vip: 192.168.0.203     # External Virtual IP
+internal_ip: 10.10.0.2          # This node's internal IP address
+internal_peer: 10.10.0.3        # Peer node's internal IP address
+internal_vip: 10.10.0.1         # Internal Gateway Virtual IP
+
+# Interface Configuration - Set these per environment
+ext_interface: ens18             # External network interface
+int_interface: ens19             # Internal network interface
+
+# NAT Configuration - Set these per environment
+
 # Firewall backend selection
-firewall_backend: iptables  # Options: iptables, nftables
+firewall_backend: iptables       # Options: iptables, nftables
 
-# Keepalived configuration
-keepalived_state: MASTER  # or BACKUP
-keepalived_priority: 100  # Higher for MASTER, lower for BACKUP
-keepalived_vrrp_interface: ens18
-keepalived_virtual_router_id: 51
-keepalived_vip: 192.168.0.203
-keepalived_auth_pass: "your_secure_password"  # Change in production
-
-# Iptables configuration
-iptables_default_policy: DROP
-
-# Nftables configuration
-nftables_table_name: filter
-
-# Service management
-iptables_persistent: true
-keepalived_enabled: true
-
-# Note: Firewall rules are now defined in vars/iptables_rules/ directory
+# Note: Firewall rules are defined in vars/iptables_rules/ directory
 # - vars/iptables_rules/input.yml
 # - vars/iptables_rules/output.yml  
 # - vars/iptables_rules/forward.yml 

@@ -1,5 +1,39 @@
-*filter
+*nat
+:PREROUTING ACCEPT [0:0]
 :INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+
+{% for rule in iptables_rules %}
+{% if rule.chain == 'PREROUTING' %}
+-A PREROUTING
+  {%- if rule.in_interface is defined %} -i {{ rule.in_interface }}{% endif %}
+  {%- if rule.protocol is defined %} -p {{ rule.protocol }}{% endif %}
+  {%- if rule.source is defined %} -s {{ rule.source }}{% endif %}
+  {%- if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+  {%- if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+  {%- if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+  {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+  {%- if rule.jump == 'DNAT' %} -j DNAT --to-destination {{ rule.to_destination }}{% else %} -j {{ rule.jump }}{% endif %}
+
+{% elif rule.chain == 'POSTROUTING' %}
+-A POSTROUTING
+  {%- if rule.out_interface is defined %} -o {{ rule.out_interface }}{% endif %}
+  {%- if rule.protocol is defined %} -p {{ rule.protocol }}{% endif %}
+  {%- if rule.source is defined %} -s {{ rule.source }}{% endif %}
+  {%- if rule.destination is defined %} -d {{ rule.destination }}{% endif %}
+  {%- if rule.destination_port is defined %} --dport {{ rule.destination_port }}{% endif %}
+  {%- if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
+  {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
+  {%- if rule.jump == 'SNAT' %} -j SNAT --to-source {{ rule.to_source }}{% else %} -j {{ rule.jump }}{% endif %}
+
+{% endif %}
+{% endfor %}
+
+COMMIT
+
+*filter
+:INPUT DROP [0:0]
 :FORWARD ACCEPT [0:0]
 :OUTPUT ACCEPT [0:0]
 
@@ -14,7 +48,8 @@
   {%- if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
   {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
   {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
-  -j {{ rule.jump }}
+  {%- if rule.jump == 'LOG' %} -j LOG{% if rule.log_prefix is defined %} --log-prefix "{{ rule.log_prefix }}"{% endif %}{% if rule.log_level is defined %} --log-level {{ rule.log_level }}{% endif %}{% else %} -j {{ rule.jump }}{% endif %}
+
 {% elif rule.chain == 'OUTPUT' %}
 -A OUTPUT
   {%- if rule.out_interface is defined %} -o {{ rule.out_interface }}{% endif %}
@@ -25,7 +60,8 @@
   {%- if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
   {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
   {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
-  -j {{ rule.jump }}
+  {%- if rule.jump == 'LOG' %} -j LOG{% if rule.log_prefix is defined %} --log-prefix "{{ rule.log_prefix }}"{% endif %}{% if rule.log_level is defined %} --log-level {{ rule.log_level }}{% endif %}{% else %} -j {{ rule.jump }}{% endif %}
+
 {% elif rule.chain == 'FORWARD' %}
 -A FORWARD
   {%- if rule.in_interface is defined %} -i {{ rule.in_interface }}{% endif %}
@@ -37,7 +73,8 @@
   {%- if rule.source_port is defined %} --sport {{ rule.source_port }}{% endif %}
   {%- if rule.ctstate is defined %} -m conntrack --ctstate {{ rule.ctstate }}{% endif %}
   {%- if rule.comment is defined %} -m comment --comment "{{ rule.comment }}"{% endif %}
-  -j {{ rule.jump }}
+  {%- if rule.jump == 'LOG' %} -j LOG{% if rule.log_prefix is defined %} --log-prefix "{{ rule.log_prefix }}"{% endif %}{% if rule.log_level is defined %} --log-level {{ rule.log_level }}{% endif %}{% else %} -j {{ rule.jump }}{% endif %}
+
 {% endif %}
 {% endfor %}
 

@@ -1,0 +1,32 @@
+Sync {
+    Mode FTFW {
+        DisableExternalCache On
+    }
+    UDP {
+        IPv4_address             {{ internal_ip }}
+        IPv4_Destination_Address {{ internal_peer }}
+        Port       3780
+        Interface  {{ int_interface }}
+        Checksum    on
+    }
+}
+
+General {
+        HashSize 8192
+        HashLimit 65535
+
+        Syslog on
+
+        LockFile /var/lock/conntrackd.lock
+
+        UNIX {
+                Path /var/run/conntrackd.sock
+                Backlog 20
+        }
+
+        SocketBufferSize 262142
+        SocketBufferSizeMaxGrown 655355
+
+        # default debian service unit file is of Type=notify
+        Systemd on
+} 

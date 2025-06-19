@@ -1,0 +1,10 @@
+---
+# NAT PREROUTING chain rules
+nat_prerouting_rules:
+  # DNAT rules for SSH forwarding to internal server
+  - protocol: tcp
+    destination: "{{ external_vip }}"
+    destination_port: 22
+    jump: DNAT
+    to_destination: "10.10.0.86:22"
+    comment: "SSH forwarding to internal server" 

@@ -1,166 +1,160 @@
-# Ansible Role: firewall-ha
+# Ansible HA Firewall Role
 
-This Ansible role sets up firewall management with High Availability using Keepalived on Debian 12 systems. It supports both **iptables** and **nftables** backends and includes simple, effective auditing of firewall command changes.
+This role configures a High Availability (HA) firewall cluster using keepalived for VIP management, conntrackd for connection state synchronization, and iptables/nftables for packet filtering.
 
-## Requirements
+## Features
 
-- Debian 12
-- Ansible 2.9 or higher
-- Two or more nodes for HA setup
+- **Dual VIP Setup**: External and Internal Virtual IPs with automatic failover
+- **State Synchronization**: conntrackd keeps connection states in sync between nodes
+- **Flexible Backend**: Supports both iptables and nftables
 
-## Role Variables
+## Quick Start
 
-All variables can be overridden in your inventory or playbook:
-
-```yaml
-# Firewall backend selection
-firewall_backend: iptables  # Options: iptables, nftables
-
-# Keepalived configuration
-keepalived_state: MASTER  # or BACKUP
-keepalived_priority: 100  # Higher for MASTER, lower for BACKUP
-keepalived_vrrp_interface: ens18
-keepalived_virtual_router_id: 51
-keepalived_vip: 192.168.0.203
-keepalived_auth_pass: "your_secure_password"
-
-# Iptables configuration (when firewall_backend: iptables)
-iptables_default_policy: DROP
-
-# Nftables configuration (when firewall_backend: nftables)
-nftables_table_name: filter
-nftables_default_policy: drop
-```
-
-### Firewall Rule Structure
-
-Firewall rules are split by chain for clarity and maintainability. Each rule can include a `comment` field for documentation. You can also specify `source`, `destination`, `in_interface`, and `out_interface` for granular control.
-
-#### Example: vars/iptables_rules/input.yml
-```yaml
----
-input_rules:
-  # Allow loopback traffic
-  - in_interface: lo
-    jump: ACCEPT
-    comment: "Allow all loopback (lo) traffic"
-
-  # Allow SSH from a specific source
-  - protocol: tcp
-    destination_port: 22
-    source: 192.168.0.254/24
-    jump: ACCEPT
-    comment: "Allow SSH from 192.168.0.254/24"
-
-  # Allow HTTP from a specific source to a specific destination
-  - protocol: tcp
-    destination_port: 80
-    source: 10.0.0.0/8
-    destination: 192.168.0.10
-    jump: ACCEPT
-    comment: "Allow HTTP from 10.0.0.0/8 to 192.168.0.10"
-
-  # Default deny
-  - jump: DROP
-    comment: "Default deny all other traffic"
-```
-
-#### Example: vars/iptables_rules/output.yml
-```yaml
----
-output_rules:
-  # Allow outbound DNS only from eth0
-  - protocol: udp
-    destination_port: 53
-    out_interface: eth0
-    jump: ACCEPT
-    comment: "Allow outbound DNS (UDP) from eth0"
-```
-
-#### Example: vars/iptables_rules/forward.yml
-```yaml
----
-forward_rules:
-  # Allow forwarding for a specific subnet
-  - source: 10.0.0.0/8
-    destination: 192.168.0.0/24
-    jump: ACCEPT
-    comment: "Allow forwarding from 10.0.0.0/8 to 192.168.0.0/24"
-  # Default deny
-  - jump: DROP
-    comment: "Default deny all other forwarded traffic"
-```
-
-### Adding Rules
-- Add rules to the appropriate file (`input.yml`, `output.yml`, `forward.yml`).
-- Each rule can have a `comment` for documentation.
-- You can use `source`, `destination`, `in_interface`, and `out_interface` for granular control.
-- The last rule in `input.yml` and `forward.yml` should always be a DROP rule for default deny.
-
-## Example Inventory
-
+### 1. Inventory Configuration
+The role is hardcoded to use the names fw1 and fw2. If you rename these, it will break.
 ```ini
-[firewall_nodes]
-node1 ansible_host=192.168.0.201 keepalived_state=MASTER keepalived_priority=100
-node2 ansible_host=192.168.0.202 keepalived_state=BACKUP keepalived_priority=90
+[firewalls]
+fw1 ansible_host=192.168.0.117 external_ip=192.168.0.117 external_peer=192.168.0.243 external_vip=192.168.0.203 internal_ip=10.10.0.2 internal_peer=10.10.0.3 internal_vip=10.10.0.1
+fw2 ansible_host=192.168.0.243 external_ip=192.168.0.243 external_peer=192.168.0.117 external_vip=192.168.0.203 internal_ip=10.10.0.3 internal_peer=10.10.0.2 internal_vip=10.10.0.1
 
-[firewall_nodes:vars]
-ansible_user=debian
-ansible_become=yes
-keepalived_vip=192.168.0.203
-keepalived_vrrp_interface=ens18
-keepalived_virtual_router_id=51
+[firewalls:vars]
+ext_interface=ens18
+int_interface=ens19
+firewall_backend=iptables
 ```
 
-## Example Playbook
+### 2. Playbook
 
 ```yaml
-- hosts: firewall_nodes
+- hosts: firewalls
   become: yes
   roles:
     - role: role-iptables-ha
 ```
 
-## Firewall Backend Selection
+### 3. Deploy
 
-This role supports both iptables and nftables backends. Set the `firewall_backend` variable to choose:
-
-### Using iptables (default)
-```yaml
-firewall_backend: iptables
+```bash
+ansible-playbook -i inventory.ini your_playbook.yml --ask-become-pass
 ```
 
-### Using nftables
-```yaml
-firewall_backend: nftables
+## Monitoring HA Status
+
+Use this command to monitor the HA cluster status in real-time:
+
+```bash
+watch -n1 "ip -4 -brief addr show ens18 ; \
+           journalctl -u keepalived -n 1 --no-pager ; \
+           conntrackd -s network | head -4"
 ```
 
-The rule format remains the same regardless of backend - the role automatically translates the rules to the appropriate syntax.
+This shows:
+- Current IP addresses on external interface (including VIP when active)
+- Latest keepalived log entry (state changes, failovers)
+- conntrackd network synchronization status
 
-## Auditing
+## Architecture
 
-The role includes simple auditing of firewall command changes using `auditd`.
+### Network Layout
+- **External Network**: 192.168.0.0/24 (ens18)
+  - fw1: 192.168.0.117
+  - fw2: 192.168.0.243
+  - VIP: 192.168.0.203
+- **Internal Network**: 10.10.0.0/24 (ens19)
+  - fw1: 10.10.0.2
+  - fw2: 10.10.0.3
+  - VIP: 10.10.0.1
 
-### For iptables backend:
-- **To see who ran which iptables command:**
-  ```bash
-  ausearch -k iptables_cmd | grep proctitle
-  ```
-  To decode the command line from the `proctitle` field (if needed):
-  ```bash
-  echo <hex_from_proctitle> | xxd -r -p
-  ```
-- **To see direct edits to iptables rules files:**
-  ```bash
-  ausearch -k iptables_changes
-  ```
+           ┌────────────────── 192.168.0.0/24 (external LAN / vmbr0) ───────────────────┐
+           │                                                                            │
+           │  Admin PC / clients                     ↑  VRRP VIP 192.168.0.203          │
+           │  192.168.0.100 …                       (what users SSH to)                 │
+           └────────────────────────────┬───────────────────────────────────────────────┘
+                                        │             DNAT :22 → 10.10.0.86
+                                        ▼
+                          +-----------------------------+
+                          |  FW-1   (primary when up)   |
+                          |                             |
+          ext uplink ───► |  ens18  192.168.0.117       |
+                          |  ens19   10.10.0.2          |
+                          |  keepalived  (priority 101) |
+                          |  conntrackd   (send state)  |
+                          +--------------┬--------------+
+                                         │  UDP 3780 state-sync
+                                         │
+                          +--------------┴--------------+
+                          |  FW-2   (secondary)         |
+                          |                             |
+          ext uplink ───► |  ens18  192.168.0.243       |
+                          |  ens19   10.10.0.3          |
+                          |  keepalived  (priority 100) |
+                          |  conntrackd  (recv state)   |
+                          +--------------┬--------------+
+                                         │
+           ┌─────────────────────────────┴─────────────────────────────────┐
+           │          10.10.0.0/24  internal / vmbr1                       │
+           │                                                               │
+           │     Server VM (SSH target) 10.10.0.86  ← default-gw 10.10.0.1 │
+           └───────────────────────────────────────────────────────────────┘
 
-### For nftables backend:
-- **To see who ran which nft command:**
-  ```bash
-  ausearch -x nft
-  ```
-- **To see direct edits to nftables configuration:**
-  ```bash
-  ausearch -k firewall_changes | grep nftables
-  ```
+
+### Services
+- **keepalived**: Manages VIP failover using VRRP (unicast mode)
+- **conntrackd**: Synchronizes connection states between nodes
+- **iptables/nftables**: Packet filtering and NAT
+
+## Variable Reference
+
+### Required Variables (per host)
+- `external_ip`: Node's external IP address
+- `external_peer`: Peer node's external IP address
+- `external_vip`: External Virtual IP address
+- `internal_ip`: Node's internal IP address
+- `internal_peer`: Peer node's internal IP address
+- `internal_vip`: Internal Virtual IP address
+
+### Global Variables
+- `ext_interface`: External network interface name
+- `int_interface`: Internal network interface name
+
+### Backends Variable
+- `firewall_backend`: Accepts either iptables or nftables
+
+## Firewall Rules
+
+Rules are defined in `vars/iptables_rules/`:
+- `input.yml`: INPUT chain rules
+- `output.yml`: OUTPUT chain rules
+- `forward.yml`: FORWARD chain rules
+- `nat_prerouting.yml`: NAT PREROUTING rules
+- `nat_postrouting.yml`: NAT POSTROUTING rules
+
+## Troubleshooting
+
+### Check Service Status
+```bash
+systemctl status keepalived conntrackd iptables
+```
+
+### View keepalived State
+```bash
+journalctl -u keepalived -f
+```
+
+### Check conntrackd Sync
+```bash
+conntrackd -s network
+conntrackd -s cache
+```
+
+### Verify VIP Assignment
+```bash
+ip addr show | grep -E "(ens18|ens19)"
+```
+
+### Test Failover
+```bash
+# On MASTER node
+systemctl stop keepalived
+# Watch VIP move to BACKUP node
+```

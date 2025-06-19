@@ -12,8 +12,27 @@
     mode: '0644'
   notify: restart keepalived
 
+- name: Create conntrackd configuration directory
+  file:
+    path: /etc/conntrackd
+    state: directory
+    mode: '0755'
+
+- name: Configure conntrackd
+  template:
+    src: conntrackd.conf.j2
+    dest: /etc/conntrackd/conntrackd.conf
+    mode: '0644'
+  notify: restart conntrackd
+
 - name: Enable and start keepalived service
   systemd:
     name: keepalived
     state: started
-    enabled: "{{ keepalived_enabled }}" 
+    enabled: true
+
+- name: Enable and start conntrackd service
+  systemd:
+    name: conntrackd
+    state: started
+    enabled: true 
